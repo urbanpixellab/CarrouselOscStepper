@@ -23,6 +23,13 @@ const int stepsPerRevolution = 200;
 int stepCountA;// the count where i am
 int stepTargetA; // the target to go to
 
+//osc out
+//outgoing messages
+
+OSCBundle bundleOUT;
+
+//converts the pin to an osc address
+
 
 
 void setup() {
@@ -94,8 +101,14 @@ void goOneStep()
   if(stepTargetA == stepCountA)
   {
     //implement osc feedback
+    //implement that it ios only once
+    OSCBundle bndl;
+    bndl.add("/reached").add(stepTargetA);
+    Udp.beginPacket(Udp.remoteIP(), destPort);
+        bndl.send(Udp); // send the bytes to the SLIP stream
+    Udp.endPacket(); // mark the end of the OSC Packet
+    bndl.empty(); // empty the bundle to free room for a new one
     return;
-
   }
   else if(stepTargetA < stepCountA)
   {
