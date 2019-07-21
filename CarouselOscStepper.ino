@@ -22,12 +22,11 @@ const int sleepPin= 4;//3
 const int stepsPerRevolution = 200;
 int stepCountA;// the count where i am
 int stepTargetA; // the target to go to
-
 //osc out
 //outgoing messages
 
 OSCBundle bundleOUT;
-
+bool onTargetA;
 //converts the pin to an osc address
 
 
@@ -42,10 +41,7 @@ void setup() {
   digitalWrite(9, HIGH);   // end reset pulse
 
   //
-  
   Ethernet.begin(mac,ip);
-  
-
   delay(1000);
   Serial.begin(9600);
   Serial.println("Receive OSC");
@@ -62,7 +58,7 @@ void setup() {
   pinMode(sleepPin, OUTPUT);
   stepCountA = 0;
   stepTargetA = 0;
-
+  onTargetA = false;
 }
 
 //reads and dispatches the incoming message
@@ -74,15 +70,11 @@ void loop(){
    {
      while(size--)
        bundleIN.fill(Udp.read());
-//       IPAddress remote = Udp.remoteIP();
        //Serial.println("received"); for debug
        if(!bundleIN.hasError()) bundleIN.route("/input", InputReceived);
   }
-
-  goOneStep();
-  //Serial.print(stepCountA + " "); Serial.println(stepTargetA);
   
-
+  goOneStep();
 }
 
 void InputReceived(OSCMessage &msg, int addrOffset){
@@ -98,16 +90,22 @@ void InputReceived(OSCMessage &msg, int addrOffset){
 void goOneStep()
 {
   bool direct = false;
+  
   if(stepTargetA == stepCountA)
   {
-    //implement osc feedback
-    //implement that it ios only once
-    OSCBundle bndl;
-    bndl.add("/reached").add(stepTargetA);
-    Udp.beginPacket(Udp.remoteIP(), destPort);
-        bndl.send(Udp); // send the bytes to the SLIP stream
-    Udp.endPacket(); // mark the end of the OSC Packet
-    bndl.empty(); // empty the bundle to free room for a new one
+    if(onTargetA == false)
+    {
+      //implement osc feedback
+      //implement that it ios only once
+      OSCBundle bndl;
+      bndl.add("/reached").add(stepTargetA);
+      Udp.beginPacket(Udp.remoteIP(), destPort);
+          bndl.send(Udp); // send the bytes to the SLIP stream
+      Udp.endPacket(); // mark the end of the OSC Packet
+      bndl.empty(); // empty the bundle to free room for a new one
+      
+    }
+    onTargetA == true;
     return;
   }
   else if(stepTargetA < stepCountA)
@@ -123,6 +121,7 @@ void goOneStep()
     stepCountA++;
   }
   
+  onTargetA == false; // we have a moving
   digitalWrite(dirPin, direct);
   for(int i = 0;i < 10;i++) //at least 10 steps otherwise the interval for on off is to short
   {
