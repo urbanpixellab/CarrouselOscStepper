@@ -10,7 +10,6 @@ IPAddress ip(192, 168, 12, 35);//ip @ stichting
 const unsigned int inPort  = 10000;
 const unsigned int destPort = 11000;
 byte mac[]                 = { 0x04, 0xE9, 0xE5, 0x03, 0x94, 0x5E }; // you can find this written on the board of some Arduino Ethernets or shields, for Teensy we have custom made code - implement it
-char ReplyBuffer[] = "onTarget";        // a string to send back
 
 
 int inputState = 0;
@@ -22,11 +21,19 @@ const int sleepPin= 4;//3
 const int stepsPerRevolution = 200;
 int stepCountA;// the count where i am
 int stepTargetA; // the target to go to
-//osc out
+
 //outgoing messages
+char *oscAddresses[] = {"/reached", "/alert"};
+
+//multiplexer
+const int channel[] = {21, 22, 23};
+//the input pin - demux output
+const int inputPin = 20;
+
+
 
 OSCBundle bundleOUT;
-bool onTargetA;
+bool sendTargetA;//we reached the target
 //converts the pin to an osc address
 
 
@@ -58,7 +65,12 @@ void setup() {
   pinMode(sleepPin, OUTPUT);
   stepCountA = 0;
   stepTargetA = 0;
-  onTargetA = false;
+  sendTargetA = false;
+  //now the multiplex
+  pinMode(inputPin,INPUT);
+  pinMode(channel[0],OUTPUT);
+  pinMode(channel[1],OUTPUT);
+  pinMode(channel[2],OUTPUT);
 }
 
 //reads and dispatches the incoming message
@@ -73,8 +85,41 @@ void loop(){
        //Serial.println("received"); for debug
        if(!bundleIN.hasError()) bundleIN.route("/input", InputReceived);
   }
-  
   goOneStep();
+  //check the multiplexer if a microswitch is hit
+  for (int muxChannel = 0; muxChannel < 8; muxChannel++) 
+  {
+    //set the channel pins based on the channel you want
+    //LED on - high - 1000 milliseconds delay
+    muxWrite(muxChannel);
+    if(muxChannel == 0 && digitalRead(inputPin) == true)
+    {
+      //send osc
+      sendOsc(1,1);
+      Serial.println("alert");
+    }
+  }
+}
+
+void sendOsc(int addresID,int value)
+{
+      //send osc
+      OSCBundle bndl;
+      bndl.add(oscAddresses[addresID]).add(value);//which switch is reached
+      Udp.beginPacket(Udp.remoteIP(), destPort);
+          bndl.send(Udp); // send the bytes to the SLIP stream
+      Udp.endPacket(); // mark the end of the OSC Packet
+      bndl.empty(); // empty the bundle to free room for a new one
+}
+
+void muxWrite(int whichChannel) 
+{
+  for (int inputPin = 0; inputPin < 3; inputPin++) 
+  {
+    int pinState = bitRead(whichChannel, inputPin);
+    // turn the pin on or off:
+    digitalWrite(channel[inputPin],pinState);
+  }
 }
 
 void InputReceived(OSCMessage &msg, int addrOffset){
@@ -89,26 +134,20 @@ void InputReceived(OSCMessage &msg, int addrOffset){
 
 void goOneStep()
 {
-  bool direct = false;
-  
+  bool direct = false;//the stepper direction
   if(stepTargetA == stepCountA)
   {
-    if(onTargetA == false)
+    if(sendTargetA == false)
     {
       //implement osc feedback
-      //implement that it ios only once
-      OSCBundle bndl;
-      bndl.add("/reached").add(stepTargetA);
-      Udp.beginPacket(Udp.remoteIP(), destPort);
-          bndl.send(Udp); // send the bytes to the SLIP stream
-      Udp.endPacket(); // mark the end of the OSC Packet
-      bndl.empty(); // empty the bundle to free room for a new one
-      
+      //implement that it ios only once not forever!!!!!
+      sendOsc(0,stepTargetA);
     }
-    onTargetA == true;
+    sendTargetA == true;
     return;
   }
-  else if(stepTargetA < stepCountA)
+  
+  if(stepTargetA < stepCountA)
   {
     digitalWrite(sleepPin, HIGH); //enable
     direct = false;
@@ -121,7 +160,7 @@ void goOneStep()
     stepCountA++;
   }
   
-  onTargetA == false; // we have a moving
+  sendTargetA == false; // we have a moving
   digitalWrite(dirPin, direct);
   for(int i = 0;i < 10;i++) //at least 10 steps otherwise the interval for on off is to short
   {
@@ -155,4 +194,4 @@ void goSteps(int steps,bool dir)
   }
   digitalWrite(sleepPin, LOW); //disable
 }
-*/
+ */
