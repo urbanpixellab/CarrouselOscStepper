@@ -84,16 +84,16 @@ void setup() {
 void loop()
 { 
   //we dont use osc for the test with the two buttons on 6 and 7
-  /*
-   OSCBundle bundleIN;
-   int size;
- 
-   if( (size = Udp.parsePacket())>0)
-   {
-     while(size--)
-       bundleIN.fill(Udp.read());
-       //Serial.println("received"); for debug
-       if(!bundleIN.hasError()) bundleIN.route("/input", InputReceived);
+  
+ OSCBundle bundleIN;
+ int size;
+
+ if( (size = Udp.parsePacket())>0)
+ {
+   while(size--)
+     bundleIN.fill(Udp.read());
+     //Serial.println("received"); for debug
+     if(!bundleIN.hasError()) bundleIN.route("/input", InputReceived);
   }
   goOneStep();
   //check the multiplexer if a microswitch is hit
@@ -108,7 +108,7 @@ void loop()
       sendOsc(1,1);
       Serial.println("alert");
     }
-  }*/
+  }
   
   //testwise button and microswitch
   
