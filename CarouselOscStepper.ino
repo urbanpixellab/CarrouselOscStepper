@@ -109,7 +109,22 @@ void loop()
       Serial.println("alert");
     }
   }*/
-  if(digitalRead(goBtnPin)) goButton(digitalRead(dirBtnPin));
+  
+  //testwise button and microswitch
+  
+  //if microswitch hits something we end the loop
+  bool nodStop = false;
+  for (int muxChannel = 0; muxChannel < 8; muxChannel++) 
+  {
+    muxWrite(muxChannel);
+    if(digitalRead(inputPin) == true)
+    {
+      nodStop = true;
+      //Serial.println("alert");
+    }
+  }
+  
+  if(digitalRead(goBtnPin) && !nodStop) goButton(digitalRead(dirBtnPin));
 }
 
 void sendOsc(int addresID,int value)
@@ -196,26 +211,3 @@ void goButton(bool dirIn)
   }
   digitalWrite(sleepPin, LOW); //disable
 }
-
-/*
-void goSteps(int steps,bool dir)
-{
-  //this should go into the main loop, otherwise the step function is blocking everythinbg
-  // best the main loop goes one step per run if the position is different than the other
-  // and the sleep is toggled also if he hs to else off
-  digitalWrite(sleepPin, HIGH); //enable
-  //digitalWrite(dirPin, HIGH);
-  digitalWrite(dirPin, dir);
-
-  // Spin motor slowly
-  for(int x = 0; x < steps; x++)
-  {
-    digitalWrite(stepPin, HIGH);
-    delayMicroseconds(2000);
-    digitalWrite(stepPin, LOW);
-    delayMicroseconds(2000);
-    stepCountA++;
-  }
-  digitalWrite(sleepPin, LOW); //disable
-}
- */
