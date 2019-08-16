@@ -1,4 +1,5 @@
 # CarrouselOscStepper
+* testwise two toggels on pin 6 and 7 for direction and go... only testwise for onlocation
 
 ## implemented
 * receiving osc for target of stepper

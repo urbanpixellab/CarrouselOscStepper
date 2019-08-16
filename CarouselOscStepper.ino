@@ -30,6 +30,9 @@ const int channel[] = {21, 22, 23};
 //the input pin - demux output
 const int inputPin = 20;
 
+//temporary for test
+int dirBtnPin = 6;
+int goBtnPin = 7;
 
 
 OSCBundle bundleOUT;
@@ -71,10 +74,17 @@ void setup() {
   pinMode(channel[0],OUTPUT);
   pinMode(channel[1],OUTPUT);
   pinMode(channel[2],OUTPUT);
+
+  //for test buttons
+  pinMode(dirBtnPin,INPUT);
+  pinMode(goBtnPin,INPUT);
 }
 
 //reads and dispatches the incoming message
-void loop(){ 
+void loop()
+{ 
+  //we dont use osc for the test with the two buttons on 6 and 7
+  /*
    OSCBundle bundleIN;
    int size;
  
@@ -98,7 +108,8 @@ void loop(){
       sendOsc(1,1);
       Serial.println("alert");
     }
-  }
+  }*/
+  if(digitalRead(goBtnPin)) goButton(digitalRead(dirBtnPin));
 }
 
 void sendOsc(int addresID,int value)
@@ -172,6 +183,19 @@ void goOneStep()
   digitalWrite(sleepPin, LOW); //disable
 }
 
+void goButton(bool dirIn)
+{
+  digitalWrite(sleepPin, HIGH); //enable
+  digitalWrite(dirPin, dirIn);
+  for(int i = 0;i < 10;i++) //at least 10 steps otherwise the interval for on off is to short
+  {
+    digitalWrite(stepPin, HIGH);
+    delayMicroseconds(1000);
+    digitalWrite(stepPin, LOW);
+    delayMicroseconds(1000);
+  }
+  digitalWrite(sleepPin, LOW); //disable
+}
 
 /*
 void goSteps(int steps,bool dir)
