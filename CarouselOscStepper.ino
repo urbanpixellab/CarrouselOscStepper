@@ -120,7 +120,8 @@ void loop()
     if(digitalRead(inputPin) == true)
     {
       nodStop = true;
-      //Serial.println("alert");
+      Serial.print("alert ");
+      Serial.println(muxChannel);
     }
   }
   
