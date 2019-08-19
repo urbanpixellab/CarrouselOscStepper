@@ -38,6 +38,7 @@ https://www.pcbcreators.com/
 
 ## Some Links
 * circuits ... are followinh
+* https://github.com/R2D2-2017/R2D2-2017/wiki/NEMA17-stepper-motor-and-DRV8825
 * https://lastminuteengineers.com/drv8825-stepper-motor-driver-arduino-tutorial/
 * https://www.makerguides.com/drv8825-stepper-motor-driver-arduino-tutorial/
 * https://github.com/CNMAT/OSC
