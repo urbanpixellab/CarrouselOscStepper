@@ -1,6 +1,9 @@
 # CarrouselOscStepper
 * testwise two toggels on pin 6 and 7 for direction and go... only testwise for onlocation
 * testwise nodstop on all microswitches
+* added eagle 7.7 board and schematic
+* added gerberfiles for the receiver motor part
+
 
 ## implemented
 * receiving osc for target of stepper
