@@ -1,3 +1,9 @@
+# Development
+
+Install Arduino and Teensy software and open the sketch file with
+
+    arduino CarouselOscStepper/CarouselOscStepper.ino &
+
 # CarrouselOscStepper
 * testwise two toggels on pin 6 and 7 for direction and go... only testwise for onlocation
 * testwise nodstop on all microswitches

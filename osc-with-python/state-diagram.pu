@@ -1,0 +1,78 @@
+@startuml
+
+skinparam BackgroundColor White|White
+
+title OSC Motor Controller - State Diagram
+
+state "uninitialized" as uninit {
+	state "STOP c=0" as su : motor is stopped
+	[*] -right-> su
+	su -> su : c=0,\nignore\nc=4,5
+
+	state "INIT c=1" as i {
+		state "INIT1" as i1 : go to minimum
+		state "INIT2" as i2 : go to maximum
+		state "INIT3" as i3 : go to minimum\nwhile counting range
+		i1 -right-> i2
+		i2 -right-> i3
+	}
+	su --> i : c=1
+	i --> su : c=0
+
+	state "GOMIN c=2" as miu : go to minimum
+	miu --> su : c=0 or\ncompleted
+	miu --> i : c=1
+	su --> miu : c=2
+	miu -> miu : c=2,\nignore\nc=4,5
+	miu -down-> mau : c=3
+
+	state "GOMAX c=3" as mau : go to maximum
+	mau --> su : c=0 or\ncompleted
+	mau --> i : c=1
+	su --> mau : c=3
+	mau -> mau : c=3,\nignore\nc=4,5
+	mau -up-> miu : c=2
+
+
+	i -> i : c=1,\nignore\nc=4,5
+}
+
+state "initialized" as init {
+	state "STOP c=0" as si : initialized\nmotor is stopped
+	i --> si : completed
+	si --> i : c=1
+
+	state "GOMIN c=2" as mii : initialized\ngo to minimum
+	mii --> si : c=0 or\ncompleted
+	mii --> i : c=1
+	si --> mii : c=2
+	mii -down-> mai : c=3
+	mii -> g : c=4
+	mii -> mii : c=5
+
+	state "GOMAX c=3" as mai : initialized\ngo to maximum
+	mai --> si : c=0 or\ncompleted
+	mai --> i : c=1
+	mai -up-> mii : c=2
+	si --> mai : c=3
+	mai -> g : c=4
+	mai -> mai : c=5
+
+	state "GOTOP c=4" as g : initialized\ngo to percentage
+	g --> si : c=0 or\ncompleted
+	g --> i : c=1
+	g --> mii : c=2
+	g --> mai : c=3
+	si --> g : c=4
+	g -> g : ignore\nc=5
+
+	state "OSCIL c=5" as o : initialized\noscillate\ncontinues until stop
+	o --> si : c=0
+	o --> i : c=1
+	o --> mii : c=2
+	o --> mai : c=3
+	si --> o : c=5
+	o -> o : ignore\nc=4
+}
+
+@enduml
