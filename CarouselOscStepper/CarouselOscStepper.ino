@@ -117,10 +117,11 @@ int stepsMotor;
 #define INITIALIZING3 13
 #define INITIALIZED   14
 
-int positionA;
-int positionB;
-int positionC;
-int positionD;
+// relative to range, not to percentage!
+int positionA = 0;
+int positionB = 0;
+int positionC = 0;
+int positionD = 0;
 
 int statusA = UNINITIALIZED;
 int statusB = UNINITIALIZED;
@@ -173,7 +174,7 @@ const int channel[] = {21, 22, 23};
 const int inputPin = 20;
 
 mac_addr mac;
-bool initialized = false;
+bool configured = false;
 unsigned int mac_int = mac.to_int();
 
 void setup() {
@@ -186,12 +187,13 @@ void setup() {
     if (ipLookup[i][0] == mac_int) {
       ip_address[3] = ipLookup[i][1];
       controllerID = ipLookup[i][2];
-      initialized = true;
+      configured = true;
       break;
     }
   }
 
-  if (initialized) {
+  Serial.println("INFO: Version 20190909");
+  if (configured) {
     Serial.print("INFO: For MAC address ");
     Serial.print(mac);
     Serial.print(" found IP address ");
@@ -207,7 +209,7 @@ void setup() {
   } else {
     Serial.print("ERROR: No IP address found for MAC address ");
     Serial.println(mac);
-    initialized = false;
+    configured = false;
     return;
 
   }
@@ -228,7 +230,7 @@ void setup() {
   }
   else {
     Serial.println("ERROR: No sockets available to use");
-    initialized = false;
+    configured = false;
     return;
   }
 
@@ -263,7 +265,7 @@ void setup() {
 
 void loop()
 {
-  if (!initialized) {
+  if (!configured) {
     delay(10000);
     Serial.print("ERROR: No IP address found for MAC address ");
     Serial.println(mac);
@@ -277,10 +279,9 @@ void loop()
     while (size--) {
       bundleIN.fill(udp.read());
     }
-    //    Serial.println("INFO: Received data"); //for debug
     if (!bundleIN.hasError()) {
       bundleIN.route("/input", InputReceived);
-      bundleIN.route("/27", MobileInputReceived);
+      //bundleIN.route("/27", MobileInputReceived); // for https://sensors2.org/osc/ but that doesn't send message in a blundle, so doesn't wor with current OSC code here.
     }
   }
 
@@ -305,6 +306,36 @@ void loop()
     }
   }
 
+  // reset microswitch readings when both begin and end are detected at the sime time (e.g. when a bird is sitting on a microswitch)
+  if (beginA && endA) {
+    beginA = false;
+    endA = false;
+    statusA = UNINITIALIZED;
+    //    commandA = STOP;
+    Serial.println("WARNING: Motor 1 detected both microswitches at the same time, uninitializing and stopping");
+  }
+  if (beginB && endB) {
+    beginB = false;
+    endB = false;
+    statusB = UNINITIALIZED;
+    //    commandB = STOP;
+    Serial.println("WARNING: Motor 2 detected both microswitches at the same time, uninitializing and stopping");
+  }
+  if (beginC && endC) {
+    beginC = false;
+    endC = false;
+    statusC = UNINITIALIZED;
+    //    commandC = STOP;
+    Serial.println("WARNING: Motor 3 detected both microswitches at the same time, uninitializing and stopping");
+  }
+  if (beginD && endD) {
+    beginD = false;
+    endD = false;
+    statusD = UNINITIALIZED;
+    //    commandD = STOP;
+    Serial.println("WARNING: Motor 4 detected both microswitches at the same time, uninitializing and stopping");
+  }
+
   goOneStep();
 }
 
@@ -318,8 +349,8 @@ void muxWrite(int whichChannel)
   }
 }
 
-void MobileInputReceived(OSCMessage &msg, int addrOffset) {
-  int v = msg.getInt(0);
+/*void MobileInputReceived(OSCMessage &msg, int addrOffset) {
+  int v = (int)msg.getFloat(0); // or Double
   Serial.print("INFO: Received mobile OSC v=");
   Serial.println(v); // note that other values are used! only 0, 1 and 3.
 
@@ -386,7 +417,7 @@ void MobileInputReceived(OSCMessage &msg, int addrOffset) {
       commandD = GOMIN;
     }
   } else if (v == 3) {
-    destinationA = 100;
+    //destinationA = 100;
     forwardA = true;
     if (endA) {
       positionA = destinationA; // realign
@@ -395,7 +426,7 @@ void MobileInputReceived(OSCMessage &msg, int addrOffset) {
     } else {
       commandA = GOMAX;
     }
-    destinationB = 100;
+    //destinationB = 100;
     forwardB = true;
     if (endB) {
       positionB = destinationB; // realign
@@ -404,7 +435,7 @@ void MobileInputReceived(OSCMessage &msg, int addrOffset) {
     } else {
       commandB = GOMAX;
     }
-    destinationC = 100;
+    //destinationC = 100;
     forwardC = true;
     if (endC) {
       positionC = destinationC; // realign
@@ -413,7 +444,7 @@ void MobileInputReceived(OSCMessage &msg, int addrOffset) {
     } else {
       commandC = GOMAX;
     }
-    destinationD = 100;
+    //destinationD = 100;
     forwardD = true;
     if (endD) {
       positionD = destinationD; // realign
@@ -423,7 +454,7 @@ void MobileInputReceived(OSCMessage &msg, int addrOffset) {
       commandD = GOMAX;
     }
   }
-}
+  }*/
 
 void InputReceived(OSCMessage &msg, int addrOffset) {
   int value = msg.getInt(0);
@@ -602,10 +633,11 @@ void InputReceived(OSCMessage &msg, int addrOffset) {
         Serial.println("INFO: Motor 1 initialization is aborted");
         statusA = UNINITIALIZED;
       }
-      destinationA = 100;
       forwardA = true;
       if (endA) {
-        positionA = destinationA; // realign
+        if (statusA == INITIALIZED) {
+          positionA = rangeA; // realign
+        }
         commandA = STOP;
         Serial.println("INFO: Motor 1 was already at maximum");
       } else {
@@ -617,10 +649,11 @@ void InputReceived(OSCMessage &msg, int addrOffset) {
         Serial.println("INFO: Motor 2 initialization is aborted");
         statusB = UNINITIALIZED;
       }
-      destinationB = 100;
       forwardB = true;
       if (endB) {
-        positionB = destinationB; // realign
+        if (statusB == INITIALIZED) {
+          positionB = rangeB; // realign
+        }
         commandB = STOP;
         Serial.println("INFO: Motor 2 was already at maximum");
       } else {
@@ -632,10 +665,11 @@ void InputReceived(OSCMessage &msg, int addrOffset) {
         Serial.println("INFO: Motor 3 initialization is aborted");
         statusC = UNINITIALIZED;
       }
-      destinationC = 100;
       forwardC = true;
       if (endC) {
-        positionC = destinationC; // realign
+        if (statusC == INITIALIZED) {
+          positionC = rangeC; // realign
+        }
         commandC = STOP;
         Serial.println("INFO: Motor 3 was already at maximum");
       } else {
@@ -647,10 +681,11 @@ void InputReceived(OSCMessage &msg, int addrOffset) {
         Serial.println("INFO: Motor 4 initialization is aborted");
         statusD = UNINITIALIZED;
       }
-      destinationD = 100;
       forwardD = true;
       if (endD) {
-        positionD = destinationD; // realign
+        if (statusD == INITIALIZED) {
+          positionD = rangeD; // realign
+        }
         commandD = STOP;
         Serial.println("INFO: Motor 4 was already at maximum");
       } else {
@@ -796,6 +831,7 @@ void InputReceived(OSCMessage &msg, int addrOffset) {
       }
     }
   }
+
 }
 
 void goOneStep()
@@ -809,7 +845,6 @@ void goOneStep()
       if (beginA) {
         statusA = INITIALIZING2;
         forwardA = true;
-        destinationA = 100;
       }
     }
     if (statusA == INITIALIZING2) {
@@ -850,14 +885,16 @@ void goOneStep()
     }
   } else if (commandA == GOMAX) {
     if (endA) {
-      positionA = destinationA;
+      if (statusA == INITIALIZED) {
+        positionA = rangeA;
+      }
       commandA = STOP;
       Serial.println("INFO: Moved to maximum");
     } else {
       if (statusA == INITIALIZED) {
         positionA++; // in case command is stopped
-        if (positionA > 100) {
-          positionA = 100;
+        if (positionA > rangeA) {
+          positionA = rangeA;
           commandA = STOP;
         }
       }
@@ -897,7 +934,6 @@ void goOneStep()
       if (beginB) {
         statusB = INITIALIZING2;
         forwardB = true;
-        destinationB = 100;
       }
     }
     if (statusB == INITIALIZING2) {
@@ -938,14 +974,16 @@ void goOneStep()
     }
   } else if (commandB == GOMAX) {
     if (endB) {
-      positionB = destinationB;
+      if (statusB == INITIALIZED) {
+        positionB = rangeB;
+      }
       commandB = STOP;
       Serial.println("INFO: Moved to maximum");
     } else {
       if (statusB == INITIALIZED) {
         positionB++; // in case command is stopped
-        if (positionB > 100) {
-          positionB = 100;
+        if (positionB > rangeB) {
+          positionB = rangeB;
           commandB = STOP;
         }
       }
@@ -985,7 +1023,6 @@ void goOneStep()
       if (beginC) {
         statusC = INITIALIZING2;
         forwardC = true;
-        destinationC = 100;
       }
     }
     if (statusC == INITIALIZING2) {
@@ -1026,14 +1063,16 @@ void goOneStep()
     }
   } else if (commandC == GOMAX) {
     if (endC) {
-      positionC = destinationC;
+      if (statusC == INITIALIZED) {
+        positionC = rangeC;
+      }
       commandC = STOP;
       Serial.println("INFO: Moved to maximum");
     } else {
       if (statusC == INITIALIZED) {
         positionC++; // in case command is stopped
-        if (positionC > 100) {
-          positionC = 100;
+        if (positionC > rangeC) {
+          positionC = rangeC;
           commandC = STOP;
         }
       }
@@ -1073,7 +1112,6 @@ void goOneStep()
       if (beginD) {
         statusD = INITIALIZING2;
         forwardD = true;
-        destinationD = 100;
       }
     }
     if (statusD == INITIALIZING2) {
@@ -1114,14 +1152,16 @@ void goOneStep()
     }
   } else if (commandD == GOMAX) {
     if (endD) {
-      positionD = destinationD;
+      if (statusD == INITIALIZED) {
+        positionD = rangeD;
+      }
       commandD = STOP;
       Serial.println("INFO: Moved to maximum");
     } else {
       if (statusD == INITIALIZED) {
         positionD++; // in case command is stopped
-        if (positionD > 100) {
-          positionD = 100;
+        if (positionD > rangeD) {
+          positionD = rangeD;
           commandD = STOP;
         }
       }
@@ -1167,7 +1207,7 @@ void goOneStep()
   if (commandA) digitalWrite(dirPinA, forwardA);
   if (commandC) digitalWrite(dirPinC, forwardC);
 
-  for (int i = 0; i < stepsInLoop; i++) {
+  for (int s = 0; s < stepsInLoop; s++) {
     if (commandB) digitalWrite(stepPinB, HIGH);
     if (commandD) digitalWrite(stepPinD, HIGH);
     if (commandA) digitalWrite(stepPinA, HIGH);

@@ -3,6 +3,7 @@
 from pythonosc import udp_client, osc_message_builder, osc_bundle_builder
 from os import system
 from socket import AF_INET, SOCK_DGRAM, socket
+from time import sleep
 
 debug = True
 debug = False
@@ -25,7 +26,7 @@ if __name__ == "__main__":
     clients[3] = udp_client.SimpleUDPClient('192.168.12.37', port) 
     clients[4] = udp_client.SimpleUDPClient('192.168.12.38', port) 
     clients[5] = udp_client.SimpleUDPClient('192.168.12.39', port) 
-#    clients[6] = udp_client.SimpleUDPClient('192.168.12.40', port) 
+    clients[6] = udp_client.SimpleUDPClient('192.168.12.40', port) 
     
     while True:
 #        system('clear')
@@ -55,6 +56,7 @@ Commands:
     3 go to motor maximum*
     4 go to % of motor range**
     5 oscillate linearly between current position and % of motor range**
+    6 for one hour go to alternating extrema adn wait 5 seconds
     9 quit this client application
 
 *   Command always works directly, also without initialization.
@@ -92,6 +94,7 @@ Global motor IDs:
             i.append(3)
             i.append(4)
             i.append(5)
+            i.append(6)
             m = 0
 
         a = 0
@@ -121,19 +124,43 @@ Global motor IDs:
         elif c == 5:
             value += c * 10000
             print('INFO: oscillate c={} motor={} (i={} m={} l={}) a={} value={}'.format(c, motor, i, m, l, a, value))
+        elif c == 6:
+            value += 2 * 10000 # min
+            print('INFO: oscillate c={} motor={} (i={} m={} l={}) a={} value={}'.format(c, motor, i, m, l, a, value))
         else:
             print('ERROR: Unknown command {}'.format(line))
             input('Press enter to continue:')
             continue
  
-        bundle = osc_bundle_builder.OscBundleBuilder(osc_bundle_builder.IMMEDIATELY)
-        message = osc_message_builder.OscMessageBuilder(address='/input')
-        message.add_arg(value)
-        bundle.add_content(message.build())
-        if debug:
-            clients[0].send(bundle.build())
+        if c == 6:
+                sl = 5
+                for x in range(60 * sl):
+                        print('{}/{}'.format(x+1, 60 * sl))
+                        if value // 10000 == 3: # max
+                                value -= 10000 # min
+                        else: # min
+                                value += 10000 # max
+                        print(value)
+                        bundle = osc_bundle_builder.OscBundleBuilder(osc_bundle_builder.IMMEDIATELY)
+                        message = osc_message_builder.OscMessageBuilder(address='/input')
+                        message.add_arg(value)
+                        bundle.add_content(message.build())
+                        if debug:
+                            clients[0].send(bundle.build())
+                        else:
+                            for id in i:
+                                clients[id].send(bundle.build())
+                        sleep(sl)
+
         else:
-            for id in i:
-                clients[id].send(bundle.build())
-            
-        input('Press enter to continue:')
+                bundle = osc_bundle_builder.OscBundleBuilder(osc_bundle_builder.IMMEDIATELY)
+                message = osc_message_builder.OscMessageBuilder(address='/input')
+                message.add_arg(value)
+                bundle.add_content(message.build())
+                if debug:
+                    clients[0].send(bundle.build())
+                else:
+                    for id in i:
+                        clients[id].send(bundle.build())
+        
+                input('Press enter to continue:')
